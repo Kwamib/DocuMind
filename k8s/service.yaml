@@ -1,0 +1,33 @@
+# ============================================================
+# DocuMind Kubernetes Service
+# 
+# A Service gives your pods a stable network endpoint.
+# Pods come and go (restarts, scaling, updates), but the
+# Service keeps a consistent IP and DNS name.
+#
+# Think of it like a phone number for a business —
+# employees (pods) change, but the number stays the same.
+#
+# LoadBalancer type tells AWS to create an actual load
+# balancer (ALB/NLB) that routes internet traffic to your pods.
+# ============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: documind-service
+spec:
+  # LoadBalancer creates an AWS load balancer automatically
+  # Other options: ClusterIP (internal only), NodePort (specific port)
+  type: LoadBalancer
+  
+  # Route traffic to pods with this label
+  selector:
+    app: documind
+  
+  ports:
+    - protocol: TCP
+      port: 80              # External port (what users connect to)
+      targetPort: 8000      # Internal port (where your app listens)
+      # So users go to http://load-balancer:80
+      # which forwards to your container on port 8000

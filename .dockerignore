@@ -1,0 +1,47 @@
+# ============================================================
+# .dockerignore — files Docker should NOT copy into the image
+# 
+# Same concept as .gitignore but for Docker builds.
+# Everything listed here gets excluded from COPY commands.
+# This keeps the image small and prevents secrets from
+# being baked into the image.
+# ============================================================
+
+# Virtual environment — we install fresh inside the container
+# using requirements.txt, so we don't need the local venv
+venv/
+
+# Node modules — Angular installs fresh in Stage 1
+# We don't want to copy 500MB of local node_modules
+node_modules/
+frontend/node_modules/
+
+# Python cache files — not needed in production
+__pycache__/
+*.pyc
+
+# Runtime data — containers start with empty data
+# Users upload fresh documents to each deployment
+chroma_data/
+uploads/
+
+# Secrets — NEVER bake API keys into a Docker image
+# Anyone who gets the image could extract them
+# We inject secrets via environment variables at runtime
+.env
+
+# Git history — adds size, not needed in the container
+.git
+
+# Angular build cache — Stage 1 builds fresh
+.angular
+frontend/dist/
+
+# IDE and editor files
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

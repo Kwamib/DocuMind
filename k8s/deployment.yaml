@@ -1,0 +1,101 @@
+# ============================================================
+# DocuMind Kubernetes Deployment
+# 
+# A Deployment tells Kubernetes:
+# "Run X copies of this container and keep them running."
+# If a container crashes, K8s automatically starts a new one.
+# If you update the image, K8s does a rolling update
+# (starts new containers before stopping old ones).
+# ============================================================
+
+apiVersion: apps/v1          # Which K8s API version to use
+kind: Deployment             # What type of resource this is
+metadata:
+  name: documind             # Name of this deployment
+  labels:
+    app: documind            # Labels for organizing resources
+
+spec:
+  # How many identical pods (containers) to run
+  # 1 for development, scale up for production traffic
+  replicas: 1
+  
+  # How K8s finds which pods belong to this deployment
+  # It looks for pods with the label "app: documind"
+  selector:
+    matchLabels:
+      app: documind
+  
+  # Template for creating pods
+  template:
+    metadata:
+      labels:
+        app: documind        # Must match selector above
+    spec:
+      containers:
+        - name: documind
+          # Your Docker image from ECR
+          # Replace <AWS_ACCOUNT_ID> and <REGION> with your values
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/documind:latest
+          
+          # Port the container listens on
+          ports:
+            - containerPort: 8000
+          
+          # Environment variables injected at runtime
+          # The API key comes from a Kubernetes Secret
+          # NOT hardcoded — secure and rotatable
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: documind-secrets    # Name of the Secret resource
+                  key: anthropic-api-key    # Key within that Secret
+          
+          # Resource limits — prevent one pod from consuming
+          # all the node's resources
+          resources:
+            requests:              # Minimum guaranteed resources
+              memory: "512Mi"      # 512 MB RAM minimum
+              cpu: "250m"          # 0.25 CPU cores minimum
+            limits:                # Maximum allowed resources
+              memory: "2Gi"        # 2 GB RAM cap
+              cpu: "1000m"         # 1 CPU core cap
+          
+          # Liveness probe — "is the container still alive?"
+          # If this fails 3 times, K8s kills and restarts the pod
+          livenessProbe:
+            httpGet:
+              path: /api/health    # Our health endpoint
+              port: 8000
+            initialDelaySeconds: 30    # Wait 30s for startup
+            periodSeconds: 10          # Then check every 10s
+          
+          # Readiness probe — "is the container ready for traffic?"
+          # Until this passes, K8s won't send traffic to this pod
+          # Separate from liveness because the embedding model
+          # takes time to load — container is alive but not ready
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 15    # Shorter wait than liveness
+            periodSeconds: 5           # Check more frequently
+          
+          # Mount persistent storage into the container
+          # This makes data survive pod restarts
+          volumeMounts:
+            - name: chroma-data
+              mountPath: /app/chroma_data   # Where ChromaDB stores vectors
+            - name: uploads
+              mountPath: /app/uploads       # Where PDFs are saved
+      
+      # Define the volumes referenced above
+      # PersistentVolumeClaims request storage from EKS
+      volumes:
+        - name: chroma-data
+          persistentVolumeClaim:
+            claimName: documind-chroma-pvc
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: documind-uploads-pvc

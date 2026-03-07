@@ -1,0 +1,171 @@
+<!-- ============================================================
+     DocuMind Chat Interface with Document Viewer
+     ============================================================ -->
+
+<div class="app-layout" [class.viewer-open]="showViewer">
+
+  <!-- ==================== CHAT PANEL ==================== -->
+  <div class="chat-container">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>DocuMind</h1>
+      <p>AI-Powered Document Q&A</p>
+    </div>
+
+    <!-- Document Upload Section -->
+    <div class="upload-section">
+      <label class="upload-button">
+        Upload PDF
+        <input type="file" accept=".pdf" (change)="onFileSelected($event)" hidden>
+      </label>
+
+      <span class="upload-status" *ngIf="uploadStatus">{{ uploadStatus }}</span>
+
+      <!-- Document chips — clickable to open viewer -->
+      <div class="doc-chips" *ngIf="documents.length > 0">
+        <span *ngFor="let doc of documents" 
+              class="doc-chip" 
+              (click)="openViewer(doc.id)"
+              title="Click to view document">
+          {{ doc.filename | slice:0:30 }}{{ doc.filename.length > 30 ? '...' : '' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Chat Messages Area -->
+    <div class="messages-area">
+      
+      <!-- Welcome message -->
+      <div class="welcome" *ngIf="messages.length === 0">
+        <h2>Welcome to DocuMind</h2>
+        <p>Upload a PDF and ask questions about it.</p>
+        <p>Your answers will be grounded in the document content.</p>
+        <p class="hint" *ngIf="documents.length > 0">
+          Click on a document name above to preview it.
+        </p>
+      </div>
+
+      <!-- Messages -->
+      <div *ngFor="let msg of messages" 
+           class="message" 
+           [class.user-message]="msg.role === 'user'"
+           [class.assistant-message]="msg.role === 'assistant'">
+        
+        <div class="message-role">
+          {{ msg.role === 'user' ? 'You' : 'DocuMind' }}
+        </div>
+        
+        <div class="message-content">{{ msg.content }}</div>
+
+        <!-- Warning banner -->
+        <div class="warning" *ngIf="msg.warning">
+          ⚠️ {{ msg.warning }}
+        </div>
+
+        <!-- Confidence score with visual bar -->
+        <div class="confidence" *ngIf="msg.confidence">
+          Confidence: {{ msg.confidence }}/5
+          <span class="confidence-bar">
+            <span class="confidence-fill" 
+                  [style.width.%]="msg.confidence * 20"
+                  [class.high]="msg.confidence >= 4"
+                  [class.medium]="msg.confidence === 3"
+                  [class.low]="msg.confidence < 3">
+            </span>
+          </span>
+        </div>
+
+        <!-- Sources — now clickable to open viewer -->
+        <div class="sources" *ngIf="msg.sources && msg.sources.length > 0">
+          <div class="sources-label">Sources (click to view):</div>
+          <div *ngFor="let source of msg.sources" 
+               class="source-item clickable"
+               (click)="openViewerFromSource(source)">
+            📄 Page {{ source.page }} 
+            (relevance: {{ (1 - source.distance).toFixed(2) }})
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div class="message assistant-message" *ngIf="isLoading">
+        <div class="message-role">DocuMind</div>
+        <div class="message-content loading">Thinking...</div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <input 
+        type="text"
+        [(ngModel)]="userInput"
+        (keyup.enter)="sendMessage()"
+        placeholder="Ask a question about your documents..."
+        [disabled]="isLoading"
+      >
+      <button (click)="sendMessage()" [disabled]="isLoading || !userInput.trim()">
+        Send
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== DOCUMENT VIEWER PANEL ==================== -->
+  <!-- 
+    This panel slides in from the right when a user clicks
+    on a document or a source citation. It shows the actual
+    PDF page as an image.
+    
+    *ngIf="showViewer" means this entire panel only exists
+    in the DOM when the viewer is open.
+  -->
+  <div class="viewer-panel" *ngIf="showViewer">
+    
+    <!-- Viewer Header -->
+    <div class="viewer-header">
+      <div class="viewer-title">
+        {{ viewerFilename | slice:0:40 }}{{ viewerFilename.length > 40 ? '...' : '' }}
+      </div>
+      <div class="viewer-actions">
+        <!-- Download button -->
+        <button class="viewer-btn" (click)="downloadDocument(viewerDocId)" title="Download PDF">
+          ⬇️
+        </button>
+        <!-- Close button -->
+        <button class="viewer-btn close-btn" (click)="closeViewer()" title="Close viewer">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- Page Navigation -->
+    <div class="viewer-nav">
+      <button class="nav-btn" (click)="prevPage()" [disabled]="viewerPageNum <= 1">
+        ← Prev
+      </button>
+      <span class="page-info">
+        Page {{ viewerPageNum }} of {{ viewerTotalPages }}
+      </span>
+      <button class="nav-btn" (click)="nextPage()" [disabled]="viewerPageNum >= viewerTotalPages">
+        Next →
+      </button>
+    </div>
+
+    <!-- Page Image Display -->
+    <div class="viewer-content">
+      <!-- 
+        The img src points to our API endpoint that converts
+        the PDF page to a PNG image on the fly.
+        
+        When Angular sees [src]="viewerImageUrl", it sets
+        the image source to whatever viewerImageUrl contains.
+        The browser then makes a GET request to that URL
+        and displays the returned image.
+      -->
+      <img [src]="viewerImageUrl" 
+           alt="Document page {{ viewerPageNum }}"
+           class="page-image">
+    </div>
+  </div>
+
+</div>

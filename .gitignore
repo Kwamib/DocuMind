@@ -1,0 +1,32 @@
+# Secrets - NEVER commit
+.env
+k8s/secrets.yaml
+
+# Runtime data
+chroma_data/
+uploads/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Angular build
+.angular
+frontend/dist/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/*.tfplan
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/

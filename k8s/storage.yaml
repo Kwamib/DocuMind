@@ -1,0 +1,42 @@
+# ============================================================
+# Persistent Volume Claims
+# 
+# PVCs request storage from the cluster. On EKS, this
+# automatically provisions EBS (Elastic Block Store) volumes.
+#
+# Without persistent storage, all data is lost when a pod
+# restarts. PVCs ensure:
+# - Uploaded PDFs survive pod restarts
+# - ChromaDB vector data persists across deployments
+# - Rolling updates don't lose data
+#
+# Think of PVCs like external hard drives that get plugged
+# into whichever pod needs them.
+# ============================================================
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: documind-chroma-pvc
+spec:
+  # ReadWriteOnce means one pod can mount this at a time
+  # For multiple replicas, you'd use ReadWriteMany (needs EFS)
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi           # 5 GB for vector database
+
+---
+# The --- separates multiple resources in one YAML file
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: documind-uploads-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi          # 10 GB for uploaded PDFs
